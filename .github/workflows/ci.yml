@@ -1,0 +1,15 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate
+    # Dogfood the reusable workflow this repo exposes to consumers.
+    uses: ./.github/workflows/nix-flake-check.yml

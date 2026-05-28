@@ -1,0 +1,50 @@
+name: Nix flake check (reusable)
+
+# Reusable workflow consumed by this repo's CI and by downstream
+# deployment repos via `uses:`. Runs `nix flake check` with KVM advertised
+# so vmTest derivations resolve. Consumers should pin by SHA, not @main.
+
+on:
+  workflow_call:
+    inputs:
+      flake-path:
+        description: "Working directory containing the flake.nix to check"
+        type: string
+        default: "."
+      runs-on:
+        description: "Runner label(s). Override for self-hosted."
+        type: string
+        default: "ubuntu-24.04-arm"
+      timeout-minutes:
+        type: number
+        default: 45
+
+jobs:
+  flake-check:
+    name: nix flake check
+    runs-on: ${{ inputs.runs-on }}
+    timeout-minutes: ${{ inputs.timeout-minutes }}
+    steps:
+      - name: Checkout
+        # actions/checkout v6.0.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd
+
+      - name: Install Nix (Determinate)
+        # DeterminateSystems/nix-installer-action v22
+        uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25
+        with:
+          # nixos vmTest derivations require the `kvm` system feature. The
+          # ubuntu-24.04-arm runner exposes /dev/kvm but the installer's
+          # default config doesn't advertise it — add it here.
+          extra-conf: |
+            extra-system-features = kvm
+
+      - name: Probe KVM availability
+        run: |
+          uname -m
+          ls -la /dev/kvm || echo "no /dev/kvm device"
+          nix config show | grep -E 'system-features' || true
+
+      - name: nix flake check
+        working-directory: ${{ inputs.flake-path }}
+        run: nix flake check --print-build-logs

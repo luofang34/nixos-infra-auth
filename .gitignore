@@ -1,0 +1,21 @@
+# Nix build artifacts
+result
+result-*
+/result
+/result-*
+
+# direnv / nix-shell
+.direnv/
+.envrc.local
+
+# Editor scratch
+*.swp
+*.swo
+.idea/
+.vscode/
+.DS_Store
+
+# Local overrides
+local.nix
+*.local.nix
+.claude/settings.local.json
