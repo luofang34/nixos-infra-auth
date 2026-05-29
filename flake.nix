@@ -183,7 +183,7 @@
         };
       };
 
-      # `nix run .#smoke-test -- <fqdn>` runs both kanidm + OIDC checks.
+      # `nix run .#smoke-test -- <fqdn>` runs reachability + OIDC checks.
       # writeShellApplication bundles bash/curl/jq into PATH so the entry
       # point works on any host with Nix, not just hosts that already have
       # those tools installed. It also runs shellcheck at build time.
@@ -191,7 +191,7 @@
         smoke-test = {
           type = "app";
           meta = {
-            description = "Run kanidm + OIDC-discovery smoke tests against a deployed host";
+            description = "Run reachability + OIDC-discovery smoke tests against a deployed host";
           };
           program = "${
             pkgs.writeShellApplication {
@@ -207,7 +207,7 @@
                   exit 2
                 fi
                 host="$1"
-                bash ${./tests/kanidm-smoke.sh} "$host"
+                bash ${./tests/reachability-smoke.sh} "$host"
                 bash ${./tests/oidc-discovery-smoke.sh} "$host"
               '';
             }
