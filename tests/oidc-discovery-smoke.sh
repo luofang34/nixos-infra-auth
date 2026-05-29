@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # OIDC discovery smoke test. Verifies that an OIDC RP (e.g. Proxmox) would be
-# able to wire itself up to the Kanidm instance.
+# able to wire itself up to the identity host. Backend-neutral: different
+# providers mount the discovery document under different prefixes, so try the
+# known locations and use the first that returns a valid OIDC document.
 set -euo pipefail
 
 usage() {
@@ -18,16 +20,29 @@ if ! [[ "$host" =~ ^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$ ]]; then
   exit 2
 fi
 
-url="https://${host}/oauth2/openid/.well-known/openid-configuration"
+# Candidate discovery paths, in order: Rauthy, Kanidm, then the RFC 8414
+# root. The first that returns a valid OIDC JSON document wins.
+candidate_paths=(
+  "/auth/v1/.well-known/openid-configuration"
+  "/oauth2/openid/.well-known/openid-configuration"
+  "/.well-known/openid-configuration"
+)
 
-if ! body=$(curl --fail --silent --show-error --max-time 10 "$url"); then
-  echo "FAIL: could not fetch $url" >&2
-  exit 1
-fi
+body=""
+url=""
+for path in "${candidate_paths[@]}"; do
+  candidate="https://${host}${path}"
+  if b=$(curl --fail --silent --show-error --max-time 10 "$candidate" 2>/dev/null) \
+    && echo "$b" | jq -e . >/dev/null 2>&1; then
+    body="$b"
+    url="$candidate"
+    break
+  fi
+done
 
-if ! echo "$body" | jq -e . >/dev/null 2>&1; then
-  echo "FAIL: response from $url is not valid JSON" >&2
-  echo "$body" >&2
+if [[ -z "$url" ]]; then
+  echo "FAIL: no valid OIDC discovery document at any known path on $host" >&2
+  printf '  tried: %s\n' "${candidate_paths[@]}" >&2
   exit 1
 fi
 
